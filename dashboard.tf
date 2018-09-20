@@ -1,13 +1,7 @@
 
-variable "prefix" {
-    
-  default = "ecs-test"
-}
-
-
 
 resource "aws_cloudwatch_dashboard" "main" {
-  dashboard_name = "${var.prefix}-dashboard"
+  dashboard_name = "${aws_ecs_cluster.test-ecs-cluster.name}-dashboard"
 
   dashboard_body = <<EOF
   {
@@ -22,7 +16,7 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "view": "timeSeries",
                   "stacked": false,
                   "metrics": [
-                      [ "AWS/ECS", "MemoryUtilization", "ClusterName", "${var.prefix}-cluster" ]
+                      [ "AWS/ECS", "MemoryUtilization", "ClusterName", "${aws_ecs_cluster.test-ecs-cluster.name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS Memory Utilization"
@@ -38,7 +32,7 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "view": "timeSeries",
                   "stacked": false,
                   "metrics": [
-                      [ "AWS/ECS", "CPUUtilization", "ClusterName", "${var.prefix}-cluster" ]
+                      [ "AWS/ECS", "CPUUtilization", "ClusterName", "${aws_ecs_cluster.test-ecs-cluster.name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS CPU Utilization"
@@ -54,7 +48,7 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "view": "timeSeries",
                   "stacked": false,
                   "metrics": [
-                      [ "AWS/ECS", "MemoryReservation", "ClusterName", "${var.prefix}-cluster" ]
+                      [ "AWS/ECS", "MemoryReservation", "ClusterName", "${aws_ecs_cluster.test-ecs-cluster.name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS Memory Reservation"
@@ -70,7 +64,7 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "view": "timeSeries",
                   "stacked": false,
                   "metrics": [
-                      [ "AWS/ECS", "CPUReservation", "ClusterName", "${var.prefix}-cluster" ]
+                      [ "AWS/ECS", "CPUReservation", "ClusterName", "${aws_ecs_cluster.test-ecs-cluster.name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS CPU Reservation"
@@ -87,7 +81,7 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "stacked": false,
                   "metrics": [
                       [ "AWS/ECS", "CPUReservation", "ClusterName", "func-cluster", { "visible": false } ],
-                      [ "AWS/AutoScaling", "GroupInServiceInstances", "AutoScalingGroupName", "${aws_autoscaling_group.ecs-autoscaling-group.id}" ]
+                      [ "AWS/AutoScaling", "GroupInServiceInstances", "AutoScalingGroupName", "${aws_autoscaling_group.ecs-autoscaling-group.name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS instances running"

@@ -4,7 +4,7 @@ data "template_file" "main" {
   vars {
     stack_name       = "${var.ecs_autoscaling_group_name}"
     region           = "${var.region}"
-    log_group_name   = "${var.prefix}-cluster-instances"
+    log_group_name   = "${aws_ecs_cluster.test-ecs-cluster.name}-instances"
     ecs_cluster_name = "${var.ecs_cluster}"
     ecs_log_level    = "${var.ecs_log_level}"
   }
