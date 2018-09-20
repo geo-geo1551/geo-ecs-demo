@@ -5,5 +5,8 @@
 *.tfstate
 *.tfstate.*
 
-# .tfvars files
-*.tfvars
+crash.log
+
+# Secrets are not allowed in general
+*.key
+*.pem
