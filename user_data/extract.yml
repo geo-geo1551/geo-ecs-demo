@@ -1,0 +1,182 @@
+#cloud-config
+package_update: true
+packages:
+  - aws-cfn-bootstrap
+  - unzip
+  - jq
+  - aws-cli
+  - bc
+write_files:
+  - path: "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      {
+          "agent": {
+              "region": "eu-west-1",
+              "metrics_collection_interval": 60,
+              "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+          },
+          "metrics": {
+              "metrics_collected": {
+                  "disk": {
+                      "resources": [
+                          "*"
+                      ],
+                      "measurement": [
+                          "disk_used_percent"
+                      ],
+                      "metrics_collection_interval": 60
+                  },
+                  "swap": {
+                      "measurement": [
+                          "swap_used_percent"
+                      ],
+                      "metrics_collection_interval": 5
+                  },
+                  "mem": {
+                      "measurement": [
+                          "mem_used_percent"
+                      ],
+                      "metrics_collection_interval": 5
+                  }
+              },
+              "append_dimensions": {
+                  "ImageId": "${aws:ImageId}",
+                  "InstanceId": "${aws:InstanceId}",
+                  "InstanceType": "${aws:InstanceType}",
+                  "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+              },
+              "aggregation_dimensions": [["InstanceId"], ["AutoScalingGroupName"]]
+          },
+          "logs": {
+              "logs_collected": {
+                  "files": {
+                      "collect_list": [
+                          {
+                              "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log*",
+                              "log_group_name": "ecs-test-cluster-instances",
+                              "log_stream_name": "{instance_id}/amazon-cloudwatch-agent",
+                              "timezone": "UTC"
+                          },
+                          {
+                              "file_path": "/var/log/ecs/ecs-agent.log*",
+                              "log_group_name": "ecs-test-cluster-instances",
+                              "log_stream_name": "{instance_id}/amazon-ecs-agent",
+                              "timezone": "UTC"
+                          }
+                      ]
+                  }
+              },
+              "log_stream_name": "{instance_id}/untitled-logs"
+          }
+      }
+  - path: "/etc/ecs/ecs.config"
+    permissions: "0744"
+    owner: "root"
+    content: |
+      ECS_CLUSTER=geo-test-cluster
+      ECS_LOG_LEVEL=info
+      ECS_ENABLE_CONTAINER_METADATA=true
+      ECS_ENABLE_TASK_IAM_ROLE=true
+      ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true
+      ECS_AVAILABLE_LOGGING_DRIVERS=["awslogs"]
+  - path: "/usr/local/scripts/cloudformation-signal.sh"
+    permissions: "0744"
+    owner: "root"
+    content: |
+      #! /bin/bash
+      set -euo pipefail
+      function await_process() {
+        echo -n "Waiting for $1..."
+        while ! pgrep -f "$1" > /dev/null; do
+          sleep 1
+        done
+        echo "Done!"
+      }
+      await_process "/usr/libexec/amazon-ecs-init start"
+  - path: "/opt/metricscript.sh"
+    permissions: "0744"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      # This script is slightly modified version from documentation page:
+      #     https://aws.amazon.com/blogs/compute/optimizing-disk-usage-on-amazon-ecs/
+      # Collect region and instanceid from metadata
+      AWSREGION=`curl -ss http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region`
+      AWSINSTANCEID=`curl -ss http://169.254.169.254/latest/meta-data/instance-id`
+      function convertUnits {
+        # Convert units back to bytes as both docker api and cli only provide freindly units
+        if [[ "$1" =~ ([0-9\.]*)B ]] ; then
+          echo "${BASH_REMATCH[1]}"
+        fi
+        if [[ "$1" =~ ([0-9\.]*)KB ]] ; then
+          awk 'BEGIN{ printf "%.0f\n", '${BASH_REMATCH[1]}' * 1000 }'
+        fi
+        if [[ "$1" =~ ([0-9\.]*)MB ]] ; then
+          awk 'BEGIN{ printf "%.0f\n", '${BASH_REMATCH[1]}' * 1000**2 }'
+        fi
+        if [[ "$1" =~ ([0-9\.]*)GB ]] ; then
+          awk 'BEGIN{ printf "%.0f\n", '${BASH_REMATCH[1]}' * 1000**3 }'
+        fi
+        if [[ "$1" =~ ([0-9\.]*)TB ]] ; then
+          awk 'BEGIN{ printf "%.0f\n", '${BASH_REMATCH[1]}' * 1000**4 }'
+        fi
+      }
+      function getAvailableMetric {
+        # Parse available space from docker info command
+        if [ "$1" == "Data" ] || [ "$1" == "Metadata" ] ; then
+          docker info | awk '/'$1' Space Available/ {print tolower($5), $4}'
+        else
+          echo "Metric must be either 'Data' or 'Metadata'"
+          exit 1
+        fi
+      }
+      function getTotalMetric {
+        # Parse total space from docker info command
+        if [ "$1" == "Data" ] || [ "$1" == "Metadata" ] ; then
+          docker info | awk '/'$1' Space Total/ {print tolower($5), $4}'
+        else
+          echo "Metric must be either 'Data' or 'Metadata'"
+          exit 1
+        fi
+      }
+      # Collect auto scaling group name from API
+      ASG_NAME=`aws --region $AWSREGION autoscaling describe-auto-scaling-instances --instance-ids="$AWSINSTANCEID" | jq -r .AutoScalingInstances[0].AutoScalingGroupName`
+
+      # Send data to custom metric FreeDataStorage
+      data=$(convertUnits `getAvailableMetric Data`)
+      aws cloudwatch put-metric-data --value $data --namespace "System/Linux" --dimensions AutoScalingGroupName=${ASG_NAME} --unit Bytes --metric-name FreeDataStorage --region $AWSREGION
+
+      # Send data to custom metric FreeMetadataStorage
+      data=$(convertUnits `getAvailableMetric Metadata`)
+      aws cloudwatch put-metric-data --value $data --namespace "System/Linux" --dimensions AutoScalingGroupName=${ASG_NAME} --unit Bytes --metric-name FreeMetadataStorage --region $AWSREGION
+
+      # Calculate percentage of utilized space by docker service
+      total_data=$(convertUnits `getTotalMetric Data`)
+      available_data=$(convertUnits `getAvailableMetric Data`)
+      # Just to be sure, remove formating from variable
+      available_data=`echo -n $available_data`
+      total_data=`echo -n $total_data`
+
+      # Send data to custom metric UtilizationDataStorage
+      utilize=`awk 'BEGIN{ printf "%.0f\n", ('$total_data' - '$available_data')/'$total_data' * 100 }'`
+      aws cloudwatch put-metric-data --value $utilize --namespace "System/Linux" --dimensions "AutoScalingGroupName=${ASG_NAME}" --unit Percent --metric-name UtilizationDataStorage --region $AWSREGION
+  - path: "/etc/cron.d/ecs_drive_monitoring"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      * * * * *    root /opt/metricscript.sh
+runcmd:
+  - |
+    yum install -y https://amazon-ssm-eu-west-1.s3.amazonaws.com/latest/linux_amd64/amazon-ssm-agent.rpm
+  - |
+    mkdir -p /tmp/cloudwatchagent && cd /tmp/cloudwatchagent
+    curl -O https://s3.amazonaws.com/amazoncloudwatch-agent/linux/amd64/latest/AmazonCloudWatchAgent.zip
+    unzip AmazonCloudWatchAgent.zip && ./install.sh
+    rm -rf /tmp/cloudwatchagent
+    start amazon-cloudwatch-agent
+  - |
+    start ecs
+    /usr/local/scripts/cloudformation-signal.sh
+    /opt/aws/bin/cfn-signal -e $? --stack ecs-autoscaling-group --resource AutoScalingGroup --region eu-west-1

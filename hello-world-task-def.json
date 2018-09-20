@@ -1,0 +1,16 @@
+ [
+        {
+            "name": "hello-world",
+            "image": "511726569835.dkr.ecr.eu-west-1.amazonaws.com/hello-world",
+            "cpu": 5,
+            "memory": 256,
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "hostPort": 0
+                }
+            ],
+            
+            "essential": true
+        }
+    ]
