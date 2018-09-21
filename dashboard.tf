@@ -1,5 +1,9 @@
 
 
+
+
+
+
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = "${aws_ecs_cluster.test-ecs-cluster.name}-dashboard"
 
@@ -80,8 +84,8 @@ resource "aws_cloudwatch_dashboard" "main" {
                   "view": "timeSeries",
                   "stacked": false,
                   "metrics": [
-                      [ "AWS/ECS", "CPUReservation", "ClusterName", "func-cluster", { "visible": false } ],
-                      [ "AWS/AutoScaling", "GroupInServiceInstances", "AutoScalingGroupName", "${aws_autoscaling_group.ecs-autoscaling-group.name}" ]
+                      [ "AWS/ECS", "CPUReservation", "ClusterName", "${aws_ecs_cluster.test-ecs-cluster.name}", { "visible": false } ],
+                      [ "AWS/AutoScaling", "GroupInServiceInstances", "AutoScalingGroupName", "${var.ecs_autoscaling_group_name}" ]
                   ],
                   "region": "eu-west-1",
                   "title": "ECS instances running"
