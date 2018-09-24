@@ -66,7 +66,7 @@ resource "aws_autoscaling_policy" "container_instance_scale_up" {
   scaling_adjustment     = 1
   adjustment_type        = "ChangeInCapacity"
   cooldown               = "300"
-  autoscaling_group_name = "${var.ecs_autoscaling_group_name}"
+  autoscaling_group_name = "${aws_autoscaling_group.ecs-autoscaling-group.name}"
 }
 
 resource "aws_autoscaling_policy" "container_instance_scale_down" {
@@ -74,5 +74,5 @@ resource "aws_autoscaling_policy" "container_instance_scale_down" {
   scaling_adjustment     = -1
   adjustment_type        = "ChangeInCapacity"
   cooldown               = "300"
-  autoscaling_group_name = "${var.ecs_autoscaling_group_name}"
+  autoscaling_group_name = "${aws_autoscaling_group.ecs-autoscaling-group.name}"
 }

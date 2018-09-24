@@ -10,9 +10,17 @@ data "template_file" "main" {
   }
 }
 
+/*
+resource "null_resource" "update-ecs-ami" {
+  provisioner "local-exec" {
+    command = "aws ssm get-parameters --names /aws/service/ecs/optimized-ami/amazon-linux/recommended | jq -r '.Parameters[].Value' | sed 's/\\//g' | jq -r '.image_id' > ecs-ami.txt"
+  }
+}
+*/
+
 resource "aws_launch_configuration" "ecs-launch-configuration" {
     name_prefix                 = "ecs-launch-configuration"
-    image_id                    = "ami-0dbcd2533bc72c3f6"
+    image_id                    = "${file("${path.module}/ecs-ami.txt")}"
     instance_type               = "t3.micro"
     iam_instance_profile        = "${aws_iam_instance_profile.ecs-instance-profile.id}"
 
@@ -35,5 +43,6 @@ resource "aws_launch_configuration" "ecs-launch-configuration" {
                                   #!/bin/bash
                                   echo ECS_CLUSTER=${var.ecs_cluster} >> /etc/ecs/ecs.config
                                   EOF*/
+    //depends_on = ["null_resource.update-ecs-ami"]
                                   
 }
