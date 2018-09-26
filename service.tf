@@ -12,6 +12,11 @@ resource "aws_ecs_service" "test-ecs-service" {
     	container_name    = "hello-world"
 	}
 
+  # Do not reset desired count if it was changed due to autoscaling
+  lifecycle {
+    ignore_changes = ["desired_count"]
+  }
+
 	depends_on = ["aws_iam_role.ecs-service-role","aws_alb_listener.alb-listener"]
 }
 

@@ -10,13 +10,13 @@ data "template_file" "main" {
   }
 }
 
-/*
+
 resource "null_resource" "update-ecs-ami" {
   provisioner "local-exec" {
-    command = "aws ssm get-parameters --names /aws/service/ecs/optimized-ami/amazon-linux/recommended | jq -r '.Parameters[].Value' | sed 's/\\//g' | jq -r '.image_id' > ecs-ami.txt"
+    command = "${path.module}/get_ecs_ami.sh"
   }
 }
-*/
+
 
 resource "aws_launch_configuration" "ecs-launch-configuration" {
     name_prefix                 = "ecs-launch-configuration"
@@ -43,6 +43,6 @@ resource "aws_launch_configuration" "ecs-launch-configuration" {
                                   #!/bin/bash
                                   echo ECS_CLUSTER=${var.ecs_cluster} >> /etc/ecs/ecs.config
                                   EOF*/
-    //depends_on = ["null_resource.update-ecs-ami"]
+    depends_on = ["null_resource.update-ecs-ami"]
                                   
 }
