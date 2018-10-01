@@ -1,0 +1,53 @@
+version: 0.2
+
+env:
+  #variables:
+     # key: "value"
+     # key: "value"
+  parameter-store:
+     AWS_ACCESS_KEY_ID: "geo_aws_access_key_id"
+     AWS_SECRET_ACCESS_KEY: "geo_aws_secret_access_key"
+
+phases:
+  install:
+    commands:
+      - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+      - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+      - aws configure set default.region eu-west-1
+      - aws configure set default.output json
+    #finally:
+      # - command
+      # - command
+  #pre_build:
+    #commands:
+      # - command
+      # - command
+    #finally:
+      # - command
+      # - command
+  build:
+    commands:
+       - terraform init -input=false
+       - terraform plan -out=tfplan -input=false
+       - terraform apply -input=false tfplan
+    #finally:
+      # - command
+      # - command
+  #post_build:
+    #commands:
+      # - command
+      # - command
+    #finally:
+      # - command
+      # - command
+#artifacts:
+  #files:
+    # - location
+    # - location
+    # - name
+  #discard-paths: yes
+  #base-directory: location
+#cache:
+  #paths:
+    # - path
+    # - path
