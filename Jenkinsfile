@@ -5,8 +5,10 @@ pipeline {
     */
     agent any
     stages {
+
+        /*
         stage('git_fetch') {
-            /*
+            
             steps{
                 
                 script{
@@ -27,9 +29,10 @@ pipeline {
                 }
                 
             }
-            */
+            
             
         }
+        */
         stage('apply_terraform') {
             environment {
                AWS_ACCESS_KEY_ID     = credentials('jenkins-aws-secret-key-id')
