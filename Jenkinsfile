@@ -6,18 +6,9 @@ pipeline {
     agent any
     stages {
         stage('git_fetch') {
-            
+            /*
             steps{
-                /*git init
-                    git remote add origin https://github.com/geo-geo1551/geo-ecs-demo.git
-                    git fetch --depth 1
-                    git checkout -t origin/master 
-                    rm -rf .git
-                    git clone --depth 1 https://github.com/geo-geo1551/geo-ecs-demo.git .
-                    */
-                    
-                    // Create a File object representing the folder '.git'
-               // def folder = new File( '.git' )
+                
                 script{
                     // If it doesn't exist
                     if( fileExists('.git') ){
@@ -36,7 +27,7 @@ pipeline {
                 }
                 
             }
-
+            */
             
         }
         stage('apply_terraform') {
